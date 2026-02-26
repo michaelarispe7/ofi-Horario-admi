@@ -1,0 +1,1620 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Capuchino UMSS - Simulador de Horarios</title>
+    <style>
+        :root {
+            --blue-dark: #1a2a6c;
+            --gold: #f1c40f;
+            --bg: #f4f7f6;
+        }
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg);
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        /* ============ PANEL LATERAL ============ */
+        #sidebar {
+            width: 380px;
+            min-width: 380px;
+            background: white;
+            border-right: 2px solid #ddd;
+            overflow-y: auto;
+            padding: 20px;
+            box-shadow: 2px 0 8px rgba(0,0,0,0.1);
+            z-index: 10;
+        }
+
+        .sidebar-header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .sidebar-header h2 {
+            color: var(--blue-dark);
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        .btn-limpiar {
+            width: 100%;
+            padding: 12px;
+            background: #e74c3c;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: 0.3s;
+            margin-bottom: 20px;
+        }
+
+        .btn-limpiar:hover {
+            background: #c0392b;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        /* Buscador */
+        #buscador {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        #buscador:focus {
+            outline: none;
+            border-color: var(--blue-dark);
+        }
+
+        /* Tarjetas de Docente */
+        .docente-card {
+            background: #fff;
+            border: 2px solid #e8e8e8;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .docente-card:hover {
+            background: #f8f9fa;
+            border-color: var(--blue-dark);
+            transform: translateX(5px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .docente-nombre {
+            font-weight: bold;
+            color: var(--blue-dark);
+            font-size: 15px;
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .docente-nombre::after {
+            content: "▼";
+            font-size: 12px;
+            transition: transform 0.3s;
+        }
+
+        .docente-card.expanded .docente-nombre::after {
+            transform: rotate(180deg);
+        }
+
+        .materias-count {
+            font-size: 12px;
+            color: #666;
+            font-weight: normal;
+        }
+
+        /* Lista de materias */
+        .lista-materias-docente {
+            display: none;
+            margin-top: 12px;
+            padding-left: 15px;
+            border-left: 3px solid var(--gold);
+        }
+
+        .lista-materias-docente.show {
+            display: block;
+            animation: slideDown 0.3s ease;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .materia-btn {
+            display: block;
+            width: 100%;
+            text-align: left;
+            padding: 10px 12px;
+            margin: 6px 0;
+            background: #f8f9fa;
+            border: 1px solid #ddd;
+            cursor: pointer;
+            border-radius: 6px;
+            font-size: 13px;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .materia-btn:hover {
+            background: #e3f2fd;
+            border-color: #2196F3;
+            transform: translateX(5px);
+        }
+
+        .materia-btn.agregada {
+            background: #d4edda;
+            border-color: #28a745;
+        }
+
+        .materia-btn.agregada::after {
+            content: "✓";
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #28a745;
+            font-weight: bold;
+        }
+
+        /* ============ CONTENIDO PRINCIPAL ============ */
+        #main-content {
+            flex-grow: 1;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+
+        header {
+            background: linear-gradient(135deg, var(--blue-dark) 0%, #4a5a8c 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        header h1 {
+            font-size: 28px;
+            margin-bottom: 5px;
+        }
+
+        header p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        /* Tabla de horarios */
+        .table-container {
+            background: white;
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: 0 2px 15px rgba(0,0,0,0.1);
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+            min-width: 900px;
+        }
+
+        th {
+            background: linear-gradient(to bottom, #f8f9fa 0%, #e9ecef 100%);
+            height: 50px;
+            border: 1px solid #dee2e6;
+            text-align: center;
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--blue-dark);
+            position: sticky;
+            top: 0;
+            z-index: 5;
+        }
+
+        th:first-child {
+            width: 90px;
+        }
+
+        td {
+            border: 1px solid #dee2e6;
+            min-height: 70px;
+            height: auto;
+            vertical-align: top;
+            padding: 4px;
+            position: relative;
+            background: white;
+            transition: background 0.2s;
+        }
+
+        td:hover {
+            background: #f8f9fa;
+        }
+
+        td:first-child {
+            font-weight: bold;
+            text-align: center;
+            background: #f8f9fa;
+            color: #495057;
+            font-size: 13px;
+        }
+
+        /* Caja de clase */
+        .clase-box {
+            min-height: 65px;
+            padding: 6px;
+            border-radius: 4px;
+            border-left: 4px solid;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            transition: all 0.2s;
+            position: relative;
+            overflow: hidden;
+            margin-bottom: 4px;
+        }
+
+        .clase-box:last-child {
+            margin-bottom: 0;
+        }
+
+        .clase-box:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            z-index: 10;
+        }
+
+        .clase-nombre {
+            font-weight: bold;
+            font-size: 11px;
+            margin-bottom: 3px;
+            line-height: 1.2;
+        }
+
+        .clase-grupo {
+            font-size: 10px;
+            opacity: 0.9;
+            margin-bottom: 2px;
+        }
+
+        .clase-aula {
+            font-size: 10px;
+            font-style: italic;
+            opacity: 0.8;
+        }
+
+        .clase-docente {
+            font-size: 9px;
+            opacity: 0.7;
+            margin-top: 2px;
+        }
+
+        /* Indicador de choque */
+        .choque-warning {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            background: #ff4444;
+            color: white;
+            border-radius: 50%;
+            width: 18px;
+            height: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.1);
+            }
+        }
+
+        /* Notificaciones */
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            border-radius: 8px;
+            color: white;
+            font-weight: bold;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            animation: slideIn 0.3s ease;
+            z-index: 1000;
+        }
+
+        .notification.success {
+            background: #28a745;
+        }
+
+        .notification.error {
+            background: #dc3545;
+        }
+
+        .notification.warning {
+            background: #ffc107;
+            color: #333;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            #sidebar {
+                width: 300px;
+                min-width: 300px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            body {
+                flex-direction: column;
+            }
+            
+            #sidebar {
+                width: 100%;
+                max-height: 40vh;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ============ PANEL LATERAL ============ -->
+    <aside id="sidebar">
+        <div class="sidebar-header">
+            <h2>🎓 HORARIO ALFA </h2>
+            <p style="color: #666; font-size: 13px;">Administración de Empresas</p>
+        </div>
+
+        <button class="btn-limpiar" onclick="limpiarHorario()">
+            🗑️ Limpiar Horario
+        </button>
+
+        <input type="text" id="buscador" placeholder="🔍 Buscar docente o materia..." onkeyup="buscarDocente()">
+
+        <div id="lista-docentes"></div>
+    </aside>
+
+    <!-- ============ CONTENIDO PRINCIPAL ============ -->
+    <main id="main-content">
+        <header>
+            <h1>📅 Simulador de Horarios</h1>
+            <p>Gestión Académica 1/2026 - Selecciona las materias y arma tu horario ideal</p>
+        </header>
+
+        <div class="table-container">
+            <table id="horario">
+                <thead>
+                    <tr>
+                        <th>Hora</th>
+                        <th>Lunes</th>
+                        <th>Martes</th>
+                        <th>Miércoles</th>
+                        <th>Jueves</th>
+                        <th>Viernes</th>
+                        <th>Sábado</th>
+                    </tr>
+                </thead>
+                <tbody id="cuerpo-horario"></tbody>
+            </table>
+        </div>
+    </main>
+
+    <script>
+        // ============================================================
+        // DATOS DE DOCENTES Y MATERIAS - EXTRAÍDOS DEL PDF OFICIAL
+        // ============================================================
+        
+        const datosPorDocente = [
+            {
+                docente: "VILLARROEL DAZA MARIA HELEN",
+                materias: [
+                    {
+                        nombre: "ADMINISTRACIÓN GENERAL",
+                        grupo: "01",
+                        clases: [
+                            {d: 1, h: "09:45", a: "E520"},
+                            {d: 3, h: "09:45", a: "E503"},
+                            {d: 5, h: "09:45", a: "E504"}
+                        ]
+                    },
+                    {
+                        nombre: "ADMINISTRACIÓN GENERAL",
+                        grupo: "03",
+                        clases: [
+                            {d: 2, h: "09:45", a: "E503"},
+                            {d: 3, h: "11:15", a: "E503"},
+                            {d: 5, h: "11:15", a: "E504"}
+                        ]
+                    }
+                ]
+            },
+            {
+                docente: "BADANI LENZ RAFAEL FERNANDO",
+                materias: [
+                    {
+                        nombre: "ADMINISTRACIÓN GENERAL",
+                        grupo: "02",
+                        clases: [
+                            {d: 1, h: "11:15", a: "E545"},
+                            {d: 3, h: "11:15", a: "E545"},
+                            {d: 5, h: "11:15", a: "E545"}
+                        ]
+                    },
+                    {
+                        nombre: "SISTEMAS ADMINISTRATIVOS",
+                        grupo: "04",
+                        clases: [
+                            {d: 1, h: "18:45", a: "E205"},
+                            {d: 3, h: "18:45", a: "E522"},
+                            {d: 4, h: "18:45", a: "E205"}
+                        ]
+                    },
+                    {
+                        nombre: "PERSONAL I",
+                        grupo: "01",
+                        clases: [
+                            {d: 2, h: "18:45", a: "E503"},
+                            {d: 4, h: "20:15", a: "E203"}
+                        ]
+                    },
+                    {
+                        nombre: "PERSONAL I",
+                        grupo: "20",
+                        clases: [
+                            {d: 2, h: "12:45", a: "E PB-4"},
+                            {d: 4, h: "12:45", a: "E523"}
+                        ]
+                    },
+                    {
+                        nombre: "PERSONAL VI",
+                        grupo: "20",
+                        clases: [
+                            {d: 2, h: "20:15", a: "E109"},
+                            {d: 3, h: "20:15", a: "E109"},
+                            {d: 6, h: "08:15", a: "E521"}
+                        ]
+                    }
+                ]
+            },
+            {
+                docente: "VALDEZ ZEGARRA RAFAEL A.",
+                materias: [
+                    {
+                        nombre: "ADMINISTRACIÓN GENERAL",
+                        grupo: "20",
+                        clases: [
+                            {d: 2, h: "20:15", a: "E201"},
+                            {d: 5, h: "06:45", a: "E524"},
+                            {d: 6, h: "06:45", a: "E502"}
+                        ]
+                    },
+                    {
+                        nombre: "PERSONAL III",
+                        grupo: "01",
+                        clases: [
+                            {d: 1, h: "20:15", a: "E202"},
+                            {d: 4, h: "18:45", a: "E502"},
+                            {d: 6, h: "08:15", a: "E522"}
+                        ]
+                    }
+                ]
+            },
+            {
+                docente: "SANCHEZ CASTELLON JUAN FELIX",
+                materias: [
+                    {
+                        nombre: "ADMINISTRACIÓN GENERAL",
+                        grupo: "21",
+                        clases: [
+                            {d: 1, h: "18:45", a: "E545"},
+                            {d: 3, h: "18:45", a: "E545"},
+                            {d: 5, h: "18:45", a: "E545"}
+                        ]
+                    }
+                ]
+            },
+            {
+                docente: "VARGAS OROSCO FREDDY",
+                materias: [
+                    {
+                        nombre: "ADMINISTRACIÓN GENERAL",
+                        grupo: "22",
+                        clases: [
+                            {d: 1, h: "15:45", a: "E205"},
+                            {d: 3, h: "15:45", a: "E503"},
+                            {d: 4, h: "15:45", a: "E503"}
+                        ]
+                    }
+                ]
+            },
+            {
+                docente: "TORRICO OCAMPO ENRIQUE",
+                materias: [
+                    {
+                        nombre: "ADMINISTRACIÓN GENERAL",
+                        grupo: "23",
+                        clases: [
+                            {d: 2, h: "17:15", a: "E309"},
+                            {d: 3, h: "06:45", a: "E103"},
+                            {d: 4, h: "17:15", a: "E309"}
+                        ]
+                    },
+                    {
+                        nombre: "INFORMATICA I",
+                        grupo: "21",
+                        clases: [
+                            {d: 2, h: "12:45", a: "E547"},
+                            {d: 3, h: "12:45", a: "E402"},
+                            {d: 4, h: "12:45", a: "E402"}
+                        ]
+                    }
+                ]
+            },
+            {
+                docente: "PEREZ AMADOR MARIO",
+                materias: [
+                    {
+                        nombre: "CONTABILIDAD I",
+                        grupo: "01",
+                        clases: [
+                            {d: 2, h: "11:15", a: "E545"},
+                            {d: 4, h: "11:15", a: "E545"},
+                            {d: 5, h: "11:15", a: "E523"}
+                        ]
+                    },
+                    {
+                        nombre: "CONTABILIDAD I",
+                        grupo: "02",
+                        clases: [
+                            {d: 2, h: "09:45", a: "E523"},
+                            {d: 4, h: "09:45", a: "E544"},
+                            {d: 5, h: "09:45", a: "E523"}
+                        ]
+                    }
+                ]
+            },
+            {
+                docente: "MENDOZA CRESPO JOSE ANTONIO",
+                materias: [
+                    {
+                        nombre: "CONTABILIDAD I",
+                        grupo: "03",
+                        clases: [
+                            {d: 1, h: "09:45", a: "E109"},
+                            {d: 2, h: "14:15", a: "E106"},
+                            {d: 3, h: "09:45", a: "E303"}
+                        ]
+                    },
+                    {
+                        nombre: "CONTABILIDAD I",
+                        grupo: "22",
+                        clases: [
+                            {d: 1, h: "18:45", a: "E544"},
+                            {d: 2, h: "18:45", a: "E101"},
+                            {d: 3, h: "18:45", a: "E PB-1"}
+                        ]
+                    }
+                ]
+            },
+            {
+                docente: "VILLAZON ARANDIA RICARDO IVAN",
+                materias: [
+                    {
+                        nombre: "CONTABILIDAD I",
+                        grupo: "04",
+                        clases: [
+                            {d: 1, h: "18:45", a: "E503"},
+                            {d: 2, h: "18:45", a: "E105"},
+                            {d: 4, h: "18:45", a: "E106"}
+                        ]
+                    },
+                    {
+                        nombre: "PSICOLOGIA ORGANIZACIONAL",
+                        grupo: "22",
+                        clases: [
+                            {d: 1, h: "06:45", a: "E544"},
+                            {d: 3, h: "20:15", a: "E544"},
+                            {d: 4, h: "20:15", a: "E541"}
+                        ]
+                    }
+                ]
+            },
+            {
+                docente: "MALDONADO ULUNQUE VICTOR HUGO",
+                materias: [
+                    {
+                        nombre: "CONTABILIDAD I",
+                        grupo: "20",
+                        clases: [
+                            {d: 1, h: "18:45", a: "E101"},
+                            {d: 2, h: "18:45", a: "E208"},
+                            {d: 4, h: "17:15", a: "E102"}
+                        ]
+                    }
+                ]
+            },
+            {
+                docente: "FERRUFINO JUAREZ JOSE MARCOS",
+                materias: [
+                    {
+                        nombre: "CONTABILIDAD I",
+                        grupo: "21",
+                        clases: [
+                            {d: 2, h: "18:45", a: "E206"},
+                            {d: 4, h: "18:45", a: "E206"},
+                            {d: 6, h: "09:45", a: "E208"}
+                        ]
+                    }
+                ]
+            },
+            {
+                docente: "QUISPE CABRERA RENE",
+                materias: [
+                    {
+                        nombre: "ALGEBRA",
+                        grupo: "01",
+                        clases: [
+                            {d: 1, h: "11:15", a: "E206"},
+                            {d: 2, h: "11:15", a: "E203"},
+                            {d: 3, h: "11:15", a: "E203"}
+                        ]
+                    },
+                    {
+                        nombre: "ALGEBRA",
+                        grupo: "24",
+                        clases: [
+                            {d: 1, h: "17:15", a: "E203"},
+                            {d: 2, h: "17:15", a: "E202"},
+                            {d: 3, h: "17:15", a: "E203"}
+                        ]
+                    }
+                ]
+            },
+            {
+                docente: "COSSIO MC.GALEN LIMBERT PAUL",
+                materias: [
+                    {
+                        nombre: "ALGEBRA",
+                        grupo: "02",
+                        clases: [
+                            {d: 1, h: "09:45", a: "E209"},
+                            {d: 2, h: "14:15", a: "E102"},
+                            {d: 3, h: "15:45", a: "E202"}
+                        ]
+                    },
+                    {
+                        nombre: "ALGEBRA",
+                        grupo: "23",
+                        clases: [
+                            {d: 1, h: "18:45", a: "E504"},
+                            {d: 2, h: "20:15", a: "E209"},
+                            {d: 3, h: "17:15", a: "E520"}
+                        ]
+                    }
+                ]
+            },
+            {
+                docente: "IRIARTE MERCADO EDGAR ALBERTO",
+                materias: [
+                    {
+                        nombre: "ALGEBRA",
+                        grupo: "04",
+                        clases: [
+                            {d: 1, h: "08:15", a: "E545"},
+                            {d: 3, h: "08:15", a: "E520"},
+                            {d: 5, h: "08:15", a: "E522"}
+                        ]
+                    }
+                ]
+            },
+            {
+                docente: "MOYA ALBARRACIN MARTIN",
+                materias: [
+                    {
+                        nombre: "ALGEBRA",
+                        grupo: "05",
+                        clases: [
+                            {d: 2, h: "20:15", a: "E101"},
+                            {d: 3, h: "18:45", a: "E520"},
+                            {d: 4, h: "06:45", a: "E502"}
+                        ]
+                    }
+                ]
+            },
+            {
+                docente: "JALDIN QUIROZ RENE",
+                materias: [
+                    {
+                        nombre: "ALGEBRA",
+                        grupo: "20",
+                        clases: [
+                            {d: 1, h: "17:15", a: "E504"},
+                            {d: 3, h: "17:15", a: "E511"},
+                            {d: 4, h: "18:45", a: "E523"}
+                        ]
+                    },
+                    {
+                        nombre: "ESTADISTICA II",
+                        grupo: "20",
+                        clases: [
+                            {d: 2, h: "06:45", a: "E522"},
+                            {d: 4, h: "06:45", a: "E522"}
+                        ]
+                    },
+                    {
+                        nombre: "ESTADISTICA II",
+                        grupo: "22",
+                        clases: [
+                            {d: 2, h: "18:45", a: "E PB-2"},
+                            {d: 3, h: "18:45", a: "E107"}
+                        ]
+                    }
+                ]
+            },
+            {
+                docente: "ALBORTA SILES RAUL JOSE",
+                materias: [
+                    {
+                        nombre: "ALGEBRA",
+                        grupo: "22",
+                        clases: [
+                            {d: 1, h: "08:15", a: "E518"},
+                            {d: 2, h: "09:45", a: "E302"},
+                            {d: 5, h: "11:15", a: "E506"}
+                        ]
+                    }
+                ]
+            },
+            {
+                docente: "GUZMAN BROCKMANN FELIPE HANS WIGBERTO",
+                materias: [
+                    {
+                        nombre: "METODOLOGIA DE INVESTIGACION I",
+                        grupo: "02",
+                        clases: [
+                            {d: 1, h: "20:15", a: "E520"},
+                            {d: 2, h: "09:45", a: "E520"},
+                            {d: 5, h: "20:15", a: "E522"}
+                        ]
+                    },
+                    {
+                        nombre: "PERSONAL I",
+                        grupo: "02",
+                        clases: [
+                            {d: 1, h: "06:45", a: "E504"},
+                            {d: 3, h: "06:45", a: "E PB-4"},
+                            {d: 5, h: "06:45", a: "E PB-4"}
+                        ]
+                    },
+                    {
+                        nombre: "PERSONAL IV",
+                        grupo: "20",
+                        clases: [
+                            {d: 1, h: "18:45", a: "E202"},
+                            {d: 3, h: "18:45", a: "E504"},
+                            {d: 5, h: "18:45", a: "E205"}
+                        ]
+                    },
+                    {
+                        nombre: "PRACTICA EMPRESARIAL",
+                        grupo: "21",
+                        clases: [
+                            {d: 2, h: "18:45", a: "E502"},
+                            {d: 4, h: "17:15", a: "E503"},
+                            {d: 6, h: "08:15", a: "E205"}
+                        ]
+                    }
+                ]
+            },
+            {
+                docente: "CARRILLO FUENTES JUAN ANGEL",
+                materias: [
+                    {
+                        nombre: "METODOLOGIA DE INVESTIGACION I",
+                        grupo: "22",
+                        clases: [
+                            {d: 1, h: "17:15", a: "E522"},
+                            {d: 3, h: "17:15", a: "E502"},
+                            {d: 5, h: "09:45", a: "E503"}
+                        ]
+                    }
+                ]
+            },
+            {
+                docente: "ZAMBRANA TRIVENO JOSE EMILIO",
+                materias: [
+                    {
+                        nombre: "METODOLOGIA DE INVESTIGACION I",
+                        grupo: "23",
+                        clases: [
+                            {d: 2, h: "12:45", a: "E504"},
+                            {d: 3, h: "12:45", a: "E504"},
+                            {d: 4, h: "12:45", a: "E504"}
+                        ]
+                    },
+                    {
+                        nombre: "METODOLOGIA DE INVESTIGACION I",
+                        grupo: "25",
+                        clases: [
+                            {d: 1, h: "15:45", a: "E502"},
+                            {d: 2, h: "15:45", a: "E504"},
+                            {d: 4, h: "15:45", a: "E504"}
+                        ]
+                    },
+                    {
+                        nombre: "SOCIOLOGIA ORGANIZACIONAL",
+                        grupo: "22",
+                        clases: [
+                            {d: 2, h: "14:15", a: "E504"},
+                            {d: 3, h: "14:15", a: "E504"},
+                            {d: 4, h: "14:15", a: "E504"}
+                        ]
+                    },
+                    {
+                        nombre: "METODOLOGIA DE INVESTIGACION II",
+                        grupo: "21",
+                        clases: [
+                            {d: 2, h: "11:15", a: "E504"},
+                            {d: 3, h: "11:15", a: "E518"},
+                            {d: 4, h: "11:15", a: "E504"}
+                        ]
+                    }
+                ]
+            },
+            {
+                docente: "GUERRA TORO MARIA ELENA",
+                materias: [
+                    {
+                        nombre: "METODOLOGIA DE INVESTIGACION I",
+                        grupo: "24",
+                        clases: [
+                            {d: 1, h: "06:45", a: "E PB-4"},
+                            {d: 3, h: "06:45", a: "E PB-1"},
+                            {d: 6, h: "08:15", a: "E PB-4"}
+                        ]
+                    }
+                ]
+            },
+            {
+                docente: "COCA GONZALES ALBERTO",
+                materias: [
+                    {
+                        nombre: "CONTABILIDAD II",
+                        grupo: "01",
+                        clases: [
+                            {d: 1, h: "08:15", a: "E520"},
+                            {d: 3, h: "08:15", a: "E301"},
+                            {d: 4, h: "09:45", a: "E522"}
+                        ]
+                    },
+                    {
+                        nombre: "ANALISIS DE ESTADOS FINANCIEROS",
+                        grupo: "02",
+                        clases: [
+                            {d: 2, h: "06:45", a: "E209"},
+                            {d: 3, h: "06:45", a: "E523"},
+                            {d: 4, h: "06:45", a: "E101"}
+                        ]
+                    }
+                ]
+            },
+            {
+                docente: "TORRICO SANCHEZ FELIPE ROBERTO",
+                materias: [
+                    {
+                        nombre: "CONTABILIDAD II",
+                        grupo: "20",
+                        clases: [
+                            {d: 2, h: "18:45", a: "E545"},
+                            {d: 4, h: "18:45", a: "E521"},
+                            {d: 5, h: "18:45", a: "E520"}
+                        ]
+                    }
+                ]
+            },
+            {
+                docente: "LOPEZ VALENZUELA JOSE WALTER",
+                materias: [
+                    {
+                        nombre: "CONTABILIDAD II",
+                        grupo: "21",
+                        clases: [
+                            {d: 1, h: "17:15", a: "E103"},
+                            {d: 2, h: "20:15", a: "E509"},
+                            {d: 3, h: "18:45", a: "E514"}
+                        ]
+                    }
+                ]
+            },
+            {
+                docente: "MONTAÑO VARGAS OSCAR",
+                materias: [
+                    {
+                        nombre: "CONTABILIDAD II",
+                        grupo: "22",
+                        clases: [
+                            {d: 2, h: "17:15", a: "E523"},
+                            {d: 3, h: "17:15", a: "E522"},
+                            {d: 4, h: "17:15", a: "E522"}
+                        ]
+                    },
+                    {
+                        nombre: "CONTABILIDAD II",
+                        grupo: "23",
+                        clases: [
+                            {d: 2, h: "20:15", a: "E521"},
+                            {d: 3, h: "20:15", a: "E524"},
+                            {d: 4, h: "20:15", a: "E544"}
+                        ]
+                    },
+                    {
+                        nombre: "ANALISIS DE ESTADOS FINANCIEROS",
+                        grupo: "03",
+                        clases: [
+                            {d: 2, h: "18:45", a: "E109"},
+                            {d: 3, h: "06:45", a: "E404"},
+                            {d: 4, h: "18:45", a: "E204"}
+                        ]
+                    },
+                    {
+                        nombre: "ANALISIS DE ESTADOS FINANCIEROS",
+                        grupo: "21",
+                        clases: [
+                            {d: 2, h: "06:45", a: "E520"},
+                            {d: 3, h: "18:45", a: "E206"},
+                            {d: 4, h: "06:45", a: "E520"}
+                        ]
+                    }
+                ]
+            },
+            {
+                docente: "QUINTANA ALVAREZ JHONNY",
+                materias: [
+                    {
+                        nombre: "CONTABILIDAD II",
+                        grupo: "24",
+                        clases: [
+                            {d: 1, h: "18:45", a: "E517"},
+                            {d: 2, h: "12:45", a: "E107"},
+                            {d: 3, h: "12:45", a: "E108"}
+                        ]
+                    }
+                ]
+            },
+            {
+                docente: "TABORGA ACHA FIDEL",
+                materias: [
+                    {
+                        nombre: "ESTADISTICA I",
+                        grupo: "01",
+                        clases: [
+                            {d: 1, h: "08:15", a: "E206"},
+                            {d: 3, h: "08:15", a: "E206"}
+                        ]
+                    }
+                ]
+            },
+            {
+                docente: "VALDIVIEZO MALDONADO LINO JUAN CARLOS",
+                materias: [
+                    {
+                        nombre: "ESTADISTICA I",
+                        grupo: "02",
+                        clases: [
+                            {d: 4, h: "09:45", a: "E205"},
+                            {d: 5, h: "09:45", a: "E521"}
+                        ]
+                    },
+                    {
+                        nombre: "PRODUCCION II",
+                        grupo: "02",
+                        clases: [
+                            {d: 1, h: "06:45", a: "E207"},
+                            {d: 2, h: "06:45", a: "E204"},
+                            {d: 3, h: "06:45", a: "E207"}
+                        ]
+                    }
+                ]
+            },
+            {
+                docente: "SUAZNABAR CLAROS FERNANDO ALBERTO",
+                materias: [
+                    {
+                        nombre: "ESTADISTICA I",
+                        grupo: "03",
+                        clases: [
+                            {d: 1, h: "09:45", a: "E541"},
+                            {d: 4, h: "08:15", a: "E522"}
+                        ]
+                    },
+                    {
+                        nombre: "FINANZAS I",
+                        grupo: "21",
+                        clases: [
+                            {d: 2, h: "17:15", a: "E545"},
+                            {d: 3, h: "17:15", a: "E545"},
+                            {d: 5, h: "06:45", a: "E520"}
+                        ]
+                    }
+                ]
+            },
+            {
+                docente: "MONTANO QUIROGA CLAUDIA CAROLA",
+                materias: [
+                    {
+                        nombre: "ESTADISTICA I",
+                        grupo: "20",
+                        clases: [
+                            {d: 2, h: "09:45", a: "E506"},
+                            {d: 4, h: "09:45", a: "E502"}
+                        ]
+                    }
+                ]
+            },
+            {
+                docente: "BUSTAMANTE MALDONADO FERNANDO",
+                materias: [
+                    {
+                        nombre: "ESTADISTICA I",
+                        grupo: "21",
+                        clases: [
+                            {d: 1, h: "06:45", a: "E110"},
+                            {d: 4, h: "06:45", a: "E102"}
+                        ]
+                    }
+                ]
+            },
+            {
+                docente: "POZO VALLEJOS MARIA ESTHER",
+                materias: [
+                    {
+                        nombre: "SOCIOLOGIA ORGANIZACIONAL",
+                        grupo: "01",
+                        clases: [
+                            {d: 1, h: "14:15", a: "E504"},
+                            {d: 3, h: "11:15", a: "E504"},
+                            {d: 5, h: "14:15", a: "E504"}
+                        ]
+                    },
+                    {
+                        nombre: "SOCIOLOGIA ORGANIZACIONAL",
+                        grupo: "21",
+                        clases: [
+                            {d: 1, h: "15:45", a: "E504"},
+                            {d: 3, h: "14:15", a: "E503"},
+                            {d: 5, h: "15:45", a: "E504"}
+                        ]
+                    }
+                ]
+            },
+            {
+                docente: "ANTEZANA LA FUENTE JORGE CARLOS",
+                materias: [
+                    {
+                        nombre: "SOCIOLOGIA ORGANIZACIONAL",
+                        grupo: "20",
+                        clases: [
+                            {d: 1, h: "06:45", a: "E520"},
+                            {d: 3, h: "06:45", a: "E520"},
+                            {d: 4, h: "06:45", a: "E104"}
+                        ]
+                    }
+                ]
+            },
+            {
+                docente: "ROCHA CHAVEZ LILIAN MARCELA",
+                materias: [
+                    {
+                        nombre: "SISTEMAS ADMINISTRATIVOS",
+                        grupo: "01",
+                        clases: [
+                            {d: 2, h: "12:45", a: "E202"},
+                            {d: 3, h: "12:45", a: "E303"},
+                            {d: 4, h: "12:45", a: "E206"}
+                        ]
+                    }
+                ]
+            },
+            {
+                docente: "LOPEZ GUMUCIO RICARDO",
+                materias: [
+                    {
+                        nombre: "SISTEMAS ADMINISTRATIVOS",
+                        grupo: "02",
+                        clases: [
+                            {d: 1, h: "06:45", a: "E503"},
+                            {d: 3, h: "09:45", a: "E201"},
+                            {d: 4, h: "09:45", a: "E201"}
+                        ]
+                    },
+                    {
+                        nombre: "PROCEDIMIENTOS ADMINISTRATIVOS",
+                        grupo: "01",
+                        clases: [
+                            {d: 1, h: "09:45", a: "E524"},
+                            {d: 2, h: "09:45", a: "E504"},
+                            {d: 3, h: "08:15", a: "E202"}
+                        ]
+                    }
+                ]
+            },
+            {
+                docente: "GUZMAN DURAN GONZALO",
+                materias: [
+                    {
+                        nombre: "SISTEMAS ADMINISTRATIVOS",
+                        grupo: "03",
+                        clases: [
+                            {d: 1, h: "09:45", a: "E207"},
+                            {d: 2, h: "09:45", a: "E PB-4"},
+                            {d: 3, h: "09:45", a: "E205"}
+                        ]
+                    },
+                    {
+                        nombre: "PROCEDIMIENTOS ADMINISTRATIVOS",
+                        grupo: "02",
+                        clases: [
+                            {d: 1, h: "12:45", a: "E502"},
+                            {d: 2, h: "12:45", a: "E521"},
+                            {d: 3, h: "08:15", a: "E208"}
+                        ]
+                    }
+                ]
+            },
+            {
+                docente: "DECKER MARQUEZ JOSE",
+                materias: [
+                    {
+                        nombre: "ECONOMIA DE EMPRESAS I",
+                        grupo: "21",
+                        clases: [
+                            {d: 2, h: "20:15", a: "E504"},
+                            {d: 5, h: "06:45", a: "E206"}
+                        ]
+                    },
+                    {
+                        nombre: "ECONOMIA DE EMPRESAS II",
+                        grupo: "01",
+                        clases: [
+                            {d: 1, h: "20:15", a: "E102"},
+                            {d: 2, h: "18:45", a: "E520"}
+                        ]
+                    }
+                ]
+            },
+            {
+                docente: "ARAUJO COSSIO ALDO ROMEL",
+                materias: [
+                    {
+                        nombre: "ECONOMIA DE EMPRESAS I",
+                        grupo: "20",
+                        clases: [
+                            {d: 1, h: "17:15", a: "E305"},
+                            {d: 2, h: "17:15", a: "E204"}
+                        ]
+                    }
+                ]
+            },
+            {
+                docente: "ZUBIETA FLORIDO FREDDY",
+                materias: [
+                    {
+                        nombre: "ECONOMIA DE EMPRESAS I",
+                        grupo: "22",
+                        clases: [
+                            {d: 1, h: "20:15", a: "E504"},
+                            {d: 3, h: "17:15", a: "E110"}
+                        ]
+                    },
+                    {
+                        nombre: "ECONOMIA DE EMPRESAS II",
+                        grupo: "23",
+                        clases: [
+                            {d: 1, h: "15:45", a: "E105"},
+                            {d: 2, h: "15:45", a: "E106"},
+                            {d: 3, h: "15:45", a: "E105"}
+                        ]
+                    },
+                    {
+                        nombre: "MACROECONOMIA",
+                        grupo: "27",
+                        clases: [
+                            {d: 1, h: "18:45", a: "E309"},
+                            {d: 2, h: "17:15", a: "E205"},
+                            {d: 3, h: "18:45", a: "E501"}
+                        ]
+                    }
+                ]
+            },
+            {
+                docente: "LOZADA TORRICO RUDY REMBERTO",
+                materias: [
+                    {
+                        nombre: "ECONOMIA DE EMPRESAS I",
+                        grupo: "52",
+                        clases: [
+                            {d: 1, h: "14:15", a: "E521"},
+                            {d: 2, h: "14:15", a: "E520"},
+                            {d: 3, h: "14:15", a: "E521"}
+                        ]
+                    },
+                    {
+                        nombre: "MERCADOTECNIA VI",
+                        grupo: "01",
+                        clases: [
+                            {d: 1, h: "18:45", a: "E501"},
+                            {d: 2, h: "20:15", a: "E303"},
+                            {d: 3, h: "18:45", a: "E201"}
+                        ]
+                    }
+                ]
+            }
+            // ============================================================
+            // AQUÍ PUEDES SEGUIR AGREGANDO MÁS DOCENTES
+            // Copia el formato de arriba y agrega los demás docentes del PDF
+            // ============================================================
+        ];
+
+        // ============================================================
+        // CONFIGURACIÓN
+        // ============================================================
+        const horas = ["06:45", "08:15", "09:45", "11:15", "12:45", "14:15", "15:45", "17:15", "18:45", "20:15"];
+        const colores = [
+            {bg: "#e3f2fd", border: "#1976d2", text: "#0d47a1"}, // Azul
+            {bg: "#f3e5f5", border: "#7b1fa2", text: "#4a148c"}, // Púrpura
+            {bg: "#e8f5e9", border: "#388e3c", text: "#1b5e20"}, // Verde
+            {bg: "#fff3e0", border: "#f57c00", text: "#e65100"}, // Naranja
+            {bg: "#fce4ec", border: "#c2185b", text: "#880e4f"}, // Rosa
+            {bg: "#e0f2f1", border: "#00796b", text: "#004d40"}, // Turquesa
+            {bg: "#fff9c4", border: "#f9a825", text: "#f57f17"}, // Amarillo
+            {bg: "#ede7f6", border: "#5e35b1", text: "#311b92"}, // Violeta
+            {bg: "#fbe9e7", border: "#d84315", text: "#bf360c"}, // Rojo oscuro
+            {bg: "#e1f5fe", border: "#0277bd", text: "#01579b"}  // Cyan
+        ];
+
+        let materiasAgregadas = {};
+        let contadorColor = 0;
+
+        // ============================================================
+        // INICIALIZACIÓN
+        // ============================================================
+        function inicializar() {
+            generarTablaHorario();
+            cargarDocentes();
+        }
+
+        // ============================================================
+        // GENERAR TABLA DE HORARIO
+        // ============================================================
+        function generarTablaHorario() {
+            const cuerpo = document.getElementById('cuerpo-horario');
+            cuerpo.innerHTML = "";
+            
+            horas.forEach(h => {
+                let fila = `<tr><td>${h}</td>`;
+                for(let d = 1; d <= 6; d++) {
+                    const cellId = `cell-${d}-${h.replace(':', '')}`;
+                    fila += `<td id="${cellId}" data-dia="${d}" data-hora="${h}"></td>`;
+                }
+                fila += `</tr>`;
+                cuerpo.innerHTML += fila;
+            });
+        }
+
+        // ============================================================
+        // CARGAR DOCENTES EN EL SIDEBAR
+        // ============================================================
+        function cargarDocentes() {
+            const listaDocentes = document.getElementById('lista-docentes');
+            listaDocentes.innerHTML = "";
+            
+            datosPorDocente.forEach((doc, docIdx) => {
+                const numMaterias = doc.materias.length;
+                
+                let html = `
+                    <div class="docente-card" onclick="toggleMaterias(${docIdx})">
+                        <div class="docente-nombre">
+                            <span>${doc.docente}</span>
+                            <span class="materias-count">${numMaterias} materia${numMaterias > 1 ? 's' : ''}</span>
+                        </div>
+                        <div class="lista-materias-docente" id="materias-${docIdx}">
+                `;
+                
+                doc.materias.forEach((mat, matIdx) => {
+                    const materiaId = `${docIdx}-${matIdx}`;
+                    const claseAgregada = materiasAgregadas[materiaId] ? 'agregada' : '';
+                    
+                    html += `
+                        <button class="materia-btn ${claseAgregada}" 
+                                id="btn-${materiaId}"
+                                onclick="toggleMateria(event, '${doc.docente}', '${mat.nombre}', '${mat.grupo}', ${JSON.stringify(mat.clases).replace(/"/g, '&quot;')}, '${materiaId}')">
+                            <strong>${mat.nombre}</strong><br>
+                            <small>Grupo: ${mat.grupo} | ${mat.clases.length} clases/semana</small>
+                        </button>
+                    `;
+                });
+
+                html += `</div></div>`;
+                listaDocentes.innerHTML += html;
+            });
+        }
+
+        // ============================================================
+        // TOGGLE MOSTRAR/OCULTAR MATERIAS
+        // ============================================================
+        function toggleMaterias(idx) {
+            const lista = document.getElementById(`materias-${idx}`);
+            const card = lista.parentElement;
+            
+            if (lista.classList.contains('show')) {
+                lista.classList.remove('show');
+                card.classList.remove('expanded');
+            } else {
+                lista.classList.add('show');
+                card.classList.add('expanded');
+            }
+        }
+
+        // ============================================================
+        // AGREGAR O ELIMINAR MATERIA
+        // ============================================================
+        function toggleMateria(event, docente, nombre, grupo, clases, materiaId) {
+            event.stopPropagation();
+            
+            if (materiasAgregadas[materiaId]) {
+                eliminarMateria(materiaId);
+            } else {
+                agregarMateria(docente, nombre, grupo, clases, materiaId);
+            }
+        }
+
+        // ============================================================
+        // AGREGAR MATERIA AL HORARIO
+        // ============================================================
+        function agregarMateria(docente, nombre, grupo, clases, materiaId) {
+            const hayChoque = verificarChoque(clases);
+            
+            if (hayChoque) {
+                mostrarNotificacion('⚠️ Hay un choque de horario con otra materia', 'warning');
+            }
+            
+            const color = colores[contadorColor % colores.length];
+            contadorColor++;
+            
+            materiasAgregadas[materiaId] = {
+                docente,
+                nombre,
+                grupo,
+                clases,
+                color
+            };
+            
+            clases.forEach(c => {
+                const cellId = `cell-${c.d}-${c.h.replace(':', '')}`;
+                const cell = document.getElementById(cellId);
+                
+                if (cell) {
+                    // Obtener las clases existentes en esta celda
+                    const clasesExistentes = cell.querySelectorAll('.clase-box');
+                    
+                    // Crear el HTML para la nueva clase
+                    const nuevaClaseHTML = `
+                        <div class="clase-box" 
+                             style="background-color: ${color.bg}; 
+                                    border-left-color: ${color.border}; 
+                                    color: ${color.text};"
+                             onclick="eliminarClaseIndividual('${materiaId}', ${c.d}, '${c.h}')">
+                            ${clasesExistentes.length > 0 ? '<div class="choque-warning">!</div>' : ''}
+                            <div class="clase-nombre">${nombre}</div>
+                            <div class="clase-grupo">Grupo ${grupo}</div>
+                            <div class="clase-aula">📍 ${c.a}</div>
+                            <div class="clase-docente">${docente.split(' ').slice(0, 2).join(' ')}</div>
+                        </div>
+                    `;
+                    
+                    // Si ya hay clases, agregar la nueva al final
+                    if (clasesExistentes.length > 0) {
+                        cell.insertAdjacentHTML('beforeend', nuevaClaseHTML);
+                        // Marcar las clases existentes también con el icono de choque
+                        clasesExistentes.forEach(claseBox => {
+                            if (!claseBox.querySelector('.choque-warning')) {
+                                const warning = document.createElement('div');
+                                warning.className = 'choque-warning';
+                                warning.textContent = '!';
+                                claseBox.insertBefore(warning, claseBox.firstChild);
+                            }
+                        });
+                    } else {
+                        // Si no hay clases, simplemente agregar la nueva
+                        cell.innerHTML = nuevaClaseHTML;
+                    }
+                }
+            });
+            
+            const btn = document.getElementById(`btn-${materiaId}`);
+            if (btn) btn.classList.add('agregada');
+            
+            mostrarNotificacion(`✅ ${nombre} (G${grupo}) agregada`, 'success');
+        }
+
+        // ============================================================
+        // VERIFICAR CHOQUE DE HORARIO
+        // ============================================================
+        function verificarChoque(clases) {
+            for (let c of clases) {
+                const cellId = `cell-${c.d}-${c.h.replace(':', '')}`;
+                const cell = document.getElementById(cellId);
+                
+                if (cell && cell.querySelector('.clase-box')) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // ============================================================
+        // ELIMINAR MATERIA COMPLETA
+        // ============================================================
+        function eliminarMateria(materiaId) {
+            const materia = materiasAgregadas[materiaId];
+            
+            if (!materia) return;
+            
+            materia.clases.forEach(c => {
+                const cellId = `cell-${c.d}-${c.h.replace(':', '')}`;
+                const cell = document.getElementById(cellId);
+                
+                if (cell) {
+                    // Buscar y eliminar solo las clases de esta materia
+                    const clasesEnCelda = cell.querySelectorAll('.clase-box');
+                    
+                    clasesEnCelda.forEach(claseBox => {
+                        // Verificar si esta clase pertenece a la materia que queremos eliminar
+                        const textoClase = claseBox.textContent;
+                        if (textoClase.includes(materia.nombre) && textoClase.includes(`Grupo ${materia.grupo}`)) {
+                            claseBox.remove();
+                        }
+                    });
+                    
+                    // Si quedan clases en la celda, actualizar los iconos de choque
+                    const clasesRestantes = cell.querySelectorAll('.clase-box');
+                    if (clasesRestantes.length === 1) {
+                        // Si solo queda una clase, quitar el icono de choque
+                        const warning = clasesRestantes[0].querySelector('.choque-warning');
+                        if (warning) warning.remove();
+                    } else if (clasesRestantes.length === 0) {
+                        // Si no quedan clases, limpiar la celda
+                        cell.innerHTML = '';
+                    }
+                }
+            });
+            
+            delete materiasAgregadas[materiaId];
+            
+            const btn = document.getElementById(`btn-${materiaId}`);
+            if (btn) btn.classList.remove('agregada');
+            
+            mostrarNotificacion(`🗑️ ${materia.nombre} (G${materia.grupo}) eliminada`, 'error');
+        }
+
+        // ============================================================
+        // ELIMINAR CLASE INDIVIDUAL AL HACER CLIC
+        // ============================================================
+        function eliminarClaseIndividual(materiaId, dia, hora) {
+            if (confirm('¿Eliminar esta materia del horario?')) {
+                eliminarMateria(materiaId);
+            }
+        }
+
+        // ============================================================
+        // LIMPIAR TODO EL HORARIO
+        // ============================================================
+        function limpiarHorario() {
+            if (confirm('¿Estás seguro de limpiar todo el horario?')) {
+                document.querySelectorAll('td[id^="cell-"]').forEach(cell => {
+                    cell.innerHTML = '';
+                });
+                
+                materiasAgregadas = {};
+                contadorColor = 0;
+                
+                document.querySelectorAll('.materia-btn').forEach(btn => {
+                    btn.classList.remove('agregada');
+                });
+                
+                mostrarNotificacion('🗑️ Horario limpiado', 'error');
+            }
+        }
+
+        // ============================================================
+        // BUSCADOR DE DOCENTES
+        // ============================================================
+        function buscarDocente() {
+            const texto = document.getElementById('buscador').value.toLowerCase();
+            const cards = document.querySelectorAll('.docente-card');
+            
+            cards.forEach(card => {
+                const contenido = card.textContent.toLowerCase();
+                card.style.display = contenido.includes(texto) ? 'block' : 'none';
+            });
+        }
+
+        // ============================================================
+        // MOSTRAR NOTIFICACIONES
+        // ============================================================
+        function mostrarNotificacion(mensaje, tipo = 'success') {
+            const notif = document.createElement('div');
+            notif.className = `notification ${tipo}`;
+            notif.textContent = mensaje;
+            
+            document.body.appendChild(notif);
+            
+            setTimeout(() => {
+                notif.style.animation = 'slideIn 0.3s ease reverse';
+                setTimeout(() => notif.remove(), 300);
+            }, 2500);
+        }
+
+        // ============================================================
+        // INICIAR APLICACIÓN
+        // ============================================================
+        window.onload = inicializar;
+        
+        console.log("✅ Capuchino UMSS cargado correctamente");
+        console.log("📚 Docentes cargados:", datosPorDocente.length);
+        console.log("🎯 Sistema 100% funcional como el Capuchino original");
+    </script>
+</body>
+</html>
